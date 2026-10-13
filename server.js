@@ -210,7 +210,23 @@ app.use((err, req, res, next) => {
         error: err.message || "Request failed."
     });
 });
+app.get("/ffmpeg-check", (req, res) => {
+    const { execFile } = require("child_process");
 
+    execFile("ffmpeg", ["-version"], (error, stdout) => {
+        if (error) {
+            return res.status(500).json({
+                installed: false,
+                error: error.message
+            });
+        }
+
+        res.json({
+            installed: true,
+            version: stdout.split("\n")[0]
+        });
+    });
+});
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`Backend running on port ${PORT}`);
 });
