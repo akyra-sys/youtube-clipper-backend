@@ -465,15 +465,42 @@ app.post("/trim-youtube", async (req, res) => {
             });
         });
     } catch (error) {
+        const details = error.message || "Unknown error";
+
         console.error(
             `YouTube ${stage} error:`,
-            error.message
+            details
         );
 
         if (!res.headersSent && !res.destroyed) {
-            const message = stage === "download"
-                ? "Could not retrieve this video. It may be private, restricted, unavailable, too large, or blocked by YouTube."
-                : "The video was retrieved, but trimming failed.";
+            let message;
+
+            if (stage === "download") {
+                if (
+                    /sign in to confirm|not a bot/i.test(details)
+                ) {
+                    message =
+                        "YouTube blocked this server's download request. " +
+                        "Ask the video owner to provide the original video file, " +
+                        "then use the Local Video File option.";
+                } else if (/private video|members-only|join this channel/i.test(details)) {
+                    message =
+                        "This video is private or restricted. " +
+                        "Ask the owner to provide an authorized video file.";
+                } else if (/maximum filesize|file is larger than/i.test(details)) {
+                    message =
+                        "This video exceeds the downloader's size limit.";
+                } else {
+                    message =
+                        "The backend could not download this video. " +
+                        "Check the Render logs for the exact cause, " +
+                        "or upload an authorized video file instead.";
+                }
+            } else {
+                message =
+                    "The video was retrieved, but trimming failed. " +
+                    "Check the Render logs.";
+            }
 
             res.status(500).json({
                 error: message
